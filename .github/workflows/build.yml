@@ -8,13 +8,12 @@ jobs:
       
       - name: Install Theos
         run: |
-          set -e
-          sudo git clone --recursive https://github.com/theos/theos /theos
-          echo "THEOS=/theos" >> $GITHUB_ENV
+          git clone --recursive https://github.com/theos/theos $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
           
       - name: Install SDK
         run: |
-          sudo curl -L https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz | sudo tar -xJf - -C /theos/sdks/
+          curl -L https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz | tar -xJf - -C $HOME/theos/sdks/
 
       - name: Build
         run: make
