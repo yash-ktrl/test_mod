@@ -12,10 +12,11 @@ jobs:
         run: |
           git clone --recursive https://github.com/theos/theos $HOME/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-          
-      - name: Install SDK
+
+      - name: Install Dependencies + SDK
         run: |
-          $HOME/theos/bin/install-theos-sdks.sh
+          brew install ldid
+          git clone https://github.com/theos/sdks $HOME/theos/sdks
 
       - name: Build
         run: |
