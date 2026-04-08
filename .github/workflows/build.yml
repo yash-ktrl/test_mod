@@ -13,7 +13,8 @@ jobs:
           
       - name: Install SDK
         run: |
-          curl -L https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz | tar -xJf - -C $HOME/theos/sdks/
+          curl -LO https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz
+          tar -xJf iPhoneOS16.5.sdk.tar.xz -C $HOME/theos/sdks/
 
       - name: Build
         run: make
