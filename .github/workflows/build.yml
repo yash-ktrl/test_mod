@@ -16,6 +16,7 @@ jobs:
       - name: Install Dependencies + SDK
         run: |
           brew install ldid
+          rm -rf $HOME/theos/sdks
           git clone https://github.com/theos/sdks $HOME/theos/sdks
 
       - name: Build
