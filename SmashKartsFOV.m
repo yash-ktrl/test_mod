@@ -1,66 +1,74 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #include <substrate.h>
+#include <dlfcn.h>   // ✅ FIXED
 
 // ── Configuration ──────────────────────────────────────────
-#define TARGET_FOV 90.0f        // Change this to your desired FOV
-#define TARGET_FAR_CLIP 200.0f  // Draw distance (original was 36)
+#define TARGET_FOV 90.0f
+#define TARGET_FAR_CLIP 200.0f
 // ───────────────────────────────────────────────────────────
 
-// Unity's Camera class methods (IL2CPP resolved at runtime)
+// Unity Camera methods
 static void (*orig_Camera_set_fieldOfView)(void *camera, float fov, void *method);
 static void (*orig_Camera_set_farClipPlane)(void *camera, float distance, void *method);
-static float (*orig_Camera_get_fieldOfView)(void *camera, void *method);
 
-// Hook: intercept every time the game sets FOV
+// Hook: FOV
 static void hook_Camera_set_fieldOfView(void *camera, float fov, void *method) {
-    // Override with our FOV instead
-    orig_Camera_set_fieldOfView(camera, TARGET_FOV, method);
+    if (orig_Camera_set_fieldOfView) {
+        orig_Camera_set_fieldOfView(camera, TARGET_FOV, method);
+    }
 }
 
-// Hook: intercept far clip plane being set
+// Hook: far clip
 static void hook_Camera_set_farClipPlane(void *camera, float distance, void *method) {
-    // Only increase, never decrease
-    float newDistance = distance < TARGET_FAR_CLIP ? TARGET_FAR_CLIP : distance;
-    orig_Camera_set_farClipPlane(camera, newDistance, method);
+    if (orig_Camera_set_farClipPlane) {
+        float newDistance = distance < TARGET_FAR_CLIP ? TARGET_FAR_CLIP : distance;
+        orig_Camera_set_farClipPlane(camera, newDistance, method);
+    }
 }
 
-// ── Il2Cpp symbol resolver helper ──────────────────────────
+// ── Symbol resolver ────────────────────────────────────────
 static void *findSymbol(const char *image, const char *symbol) {
     void *handle = dlopen(image, RTLD_NOW | RTLD_NOLOAD);
-    if (!handle) return NULL;
+    if (!handle) {
+        NSLog(@"[SmashKartsFOV] ❌ dlopen failed");
+        return NULL;
+    }
+
     void *sym = dlsym(handle, symbol);
     dlclose(handle);
+
+    if (!sym) {
+        NSLog(@"[SmashKartsFOV] ❌ dlsym failed for %s", symbol);
+    }
+
     return sym;
 }
 
-// ── Constructor: runs when dylib is loaded ─────────────────
+// ── Entry ─────────────────────────────────────────────────
 __attribute__((constructor))
 static void initialize() {
-    NSLog(@"[SmashKartsFOV] Tweak loaded! Targeting FOV: %.1f", (float)TARGET_FOV);
+    NSLog(@"[SmashKartsFOV] 🚀 Loaded | Target FOV: %.1f", (float)TARGET_FOV);
 
-    // Path to the IL2CPP game binary inside the .app bundle
     NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
     NSString *frameworkPath = [bundlePath stringByAppendingPathComponent:@"Frameworks/UnityFramework.framework/UnityFramework"];
     
     const char *binaryPath = [frameworkPath fileSystemRepresentation];
 
-    // Resolve Camera::set_fieldOfView from the Unity IL2CPP binary
-    // These symbol names follow Unity IL2CPP naming convention
     void *set_fov_ptr = findSymbol(binaryPath, "Camera_set_fieldOfView_m");
     void *set_far_ptr = findSymbol(binaryPath, "Camera_set_farClipPlane_m");
 
     if (set_fov_ptr) {
         MSHookFunction(set_fov_ptr, (void *)hook_Camera_set_fieldOfView, (void **)&orig_Camera_set_fieldOfView);
-        NSLog(@"[SmashKartsFOV] ✅ Hooked Camera.fieldOfView setter");
+        NSLog(@"[SmashKartsFOV] ✅ Hooked FOV");
     } else {
-        NSLog(@"[SmashKartsFOV] ❌ Could not find fieldOfView symbol — try Il2CppDumper to find exact name");
+        NSLog(@"[SmashKartsFOV] ❌ FOV symbol not found");
     }
 
     if (set_far_ptr) {
         MSHookFunction(set_far_ptr, (void *)hook_Camera_set_farClipPlane, (void **)&orig_Camera_set_farClipPlane);
-        NSLog(@"[SmashKartsFOV] ✅ Hooked Camera.farClipPlane setter");
+        NSLog(@"[SmashKartsFOV] ✅ Hooked FarClip");
     } else {
-        NSLog(@"[SmashKartsFOV] ❌ Could not find farClipPlane symbol");
+        NSLog(@"[SmashKartsFOV] ❌ FarClip symbol not found");
     }
 }
