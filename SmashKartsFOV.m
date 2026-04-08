@@ -1,11 +1,11 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #include <substrate.h>
-#include <dlfcn.h>   // ✅ FIXED
+#include <dlfcn.h>
 
 // ── Configuration ──────────────────────────────────────────
-#define TARGET_FOV 90.0f
-#define TARGET_FAR_CLIP 200.0f
+#define TARGET_FOV 120.0f          // 🔥 increased for visible testing
+#define TARGET_FAR_CLIP 300.0f
 // ───────────────────────────────────────────────────────────
 
 // Unity Camera methods
@@ -14,6 +14,7 @@ static void (*orig_Camera_set_farClipPlane)(void *camera, float distance, void *
 
 // Hook: FOV
 static void hook_Camera_set_fieldOfView(void *camera, float fov, void *method) {
+    NSLog(@"[HOOK] FOV called");
     if (orig_Camera_set_fieldOfView) {
         orig_Camera_set_fieldOfView(camera, TARGET_FOV, method);
     }
@@ -21,6 +22,7 @@ static void hook_Camera_set_fieldOfView(void *camera, float fov, void *method) {
 
 // Hook: far clip
 static void hook_Camera_set_farClipPlane(void *camera, float distance, void *method) {
+    NSLog(@"[HOOK] FarClip called");
     if (orig_Camera_set_farClipPlane) {
         float newDistance = distance < TARGET_FAR_CLIP ? TARGET_FAR_CLIP : distance;
         orig_Camera_set_farClipPlane(camera, newDistance, method);
@@ -38,9 +40,7 @@ static void *findSymbol(const char *image, const char *symbol) {
     void *sym = dlsym(handle, symbol);
     dlclose(handle);
 
-    if (!sym) {
-        NSLog(@"[SmashKartsFOV] ❌ dlsym failed for %s", symbol);
-    }
+    NSLog(@"[DEBUG] symbol %s -> %p", symbol, sym);
 
     return sym;
 }
@@ -55,8 +55,17 @@ static void initialize() {
     
     const char *binaryPath = [frameworkPath fileSystemRepresentation];
 
-    void *set_fov_ptr = findSymbol(binaryPath, "Camera_set_fieldOfView_m");
-    void *set_far_ptr = findSymbol(binaryPath, "Camera_set_farClipPlane_m");
+    // 🔥 Try multiple possible symbol names
+    void *set_fov_ptr =
+        findSymbol(binaryPath, "Camera_set_fieldOfView_m") ?:
+        findSymbol(binaryPath, "Camera_set_fieldOfView");
+
+    void *set_far_ptr =
+        findSymbol(binaryPath, "Camera_set_farClipPlane_m") ?:
+        findSymbol(binaryPath, "Camera_set_farClipPlane");
+
+    NSLog(@"[DEBUG] Final FOV ptr: %p", set_fov_ptr);
+    NSLog(@"[DEBUG] Final FAR ptr: %p", set_far_ptr);
 
     if (set_fov_ptr) {
         MSHookFunction(set_fov_ptr, (void *)hook_Camera_set_fieldOfView, (void **)&orig_Camera_set_fieldOfView);
