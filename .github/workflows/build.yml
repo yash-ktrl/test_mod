@@ -1,8 +1,10 @@
 name: Build FOV Tweak
 on: [push]
+
 jobs:
   build:
     runs-on: macos-latest
+
     steps:
       - uses: actions/checkout@v4
       
@@ -13,11 +15,14 @@ jobs:
           
       - name: Install SDK
         run: |
-          curl -LO https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz
-          tar -xJf iPhoneOS16.5.sdk.tar.xz -C $HOME/theos/sdks/
+          mkdir -p $HOME/theos/sdks
+          curl -L -o sdk.tar.xz https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz
+          tar -xJf sdk.tar.xz -C $HOME/theos/sdks/
 
       - name: Build
-        run: make
+        run: |
+          export THEOS=$HOME/theos
+          make
 
       - name: Upload dylib
         uses: actions/upload-artifact@v4
