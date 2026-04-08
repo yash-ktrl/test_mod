@@ -15,9 +15,7 @@ jobs:
           
       - name: Install SDK
         run: |
-          mkdir -p $HOME/theos/sdks
-          curl -L -o sdk.tar.xz https://github.com/theos/sdks/releases/download/2023-09-11/iPhoneOS16.5.sdk.tar.xz
-          tar -xJf sdk.tar.xz -C $HOME/theos/sdks/
+          $HOME/theos/bin/install-theos-sdks.sh
 
       - name: Build
         run: |
