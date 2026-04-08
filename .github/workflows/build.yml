@@ -1,0 +1,17 @@
+name: Build Tweak
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Theos
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+      - name: Build
+        run: make
+      - name: Upload dylib
+        uses: actions/upload-artifact@v3
+        with:
+          name: SmashKartsFOV.dylib
+          path: .theos/obj/*.dylib
